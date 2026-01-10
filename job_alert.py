@@ -63,7 +63,7 @@ def send_email(body):
     msg = MIMEText(body)
     msg["Subject"] = "🔥 Daily Laravel & CodeIgniter Jobs"
     msg["From"] = sender
-    msg["To"] = sender
+    msg["To"] = sender + ", luckynaroju@gmail.com"
 
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.starttls()
