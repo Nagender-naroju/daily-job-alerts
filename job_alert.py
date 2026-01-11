@@ -1,73 +1,38 @@
 import os
 import requests
-from bs4 import BeautifulSoup
-import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
-import re
 
 KEYWORDS = ["laravel", "codeigniter"]
 
-# ---------- Fetch Jobs ----------
+# ---------- Fetch Jobs from Remotive API ----------
 def fetch_jobs():
     jobs = []
 
     for keyword in KEYWORDS:
-        print(f"Fetching jobs for: {keyword}")
-        url = f"https://remoteok.com/remote-{keyword}-jobs"
+        print(f"Fetching jobs for: {keyword} from Remotive API")
+        url = f"https://remotive.io/api/remote-jobs?search={keyword}"
+        
+        try:
+            r = requests.get(url, timeout=15)
+            r.raise_for_status()
+            data = r.json()
+            
+            for job in data.get("jobs", [])[:5]:  # top 5 jobs per keyword
+                jobs.append({
+                    "title": job["title"],
+                    "company": job["company_name"],
+                    "link": job["url"],
+                    "desc": (job.get("description") or "Remote position").replace("\n", " ")[:400],
+                    "keyword": keyword.upper()
+                })
+        except Exception as e:
+            print(f"Error fetching jobs for {keyword}: {e}")
+            continue
 
-        headers = {"User-Agent": "Mozilla/5.0"}
-
-        r = requests.get(url, headers=headers, timeout=15)
-        soup = BeautifulSoup(r.text, "html.parser")
-
-        rows = soup.select("tr.job")
-
-        print(f"Found {len(rows)} job rows")
-
-        for row in rows[:5]:
-            title = row.get("data-title")
-            company = row.get("data-company")
-            url_path = row.get("data-url")
-
-            if not title or not url_path:
-                continue
-
-            link = "https://remoteok.com" + url_path
-
-            desc = f"Remote {keyword.title()} position at {company}"
-
-            jobs.append({
-                "title": title.strip(),
-                "company": company.strip() if company else "Company",
-                "link": link,
-                "desc": desc,
-                "keyword": keyword.upper()
-            })
-
-    # fallback sample jobs if scraping fails
-    if not jobs:
-        print("No jobs scraped — using sample jobs")
-        jobs = [
-            {
-                "title": "Laravel Developer",
-                "company": "Sample Company",
-                "link": "https://remoteok.com",
-                "desc": "Remote Laravel Developer role",
-                "keyword": "LARAVEL"
-            },
-            {
-                "title": "CodeIgniter Developer",
-                "company": "Sample Startup",
-                "link": "https://remoteok.com",
-                "desc": "Remote CodeIgniter Developer role",
-                "keyword": "CODEIGNITER"
-            }
-        ]
-
-    print(f"Total jobs to send: {len(jobs)}")
-    return jobs
+    print(f"Total jobs found: {len(jobs)}")
+    return jobs[:6]  # limit total jobs to 6
 
 
 # ---------- Free LinkedIn Message ----------
@@ -80,11 +45,15 @@ I have strong experience in {job['keyword']} and backend development and would l
 Looking forward to connecting.
 
 Regards,
-Your Name"""
+Nagender Naroju"""
 
 
 # ---------- Send Email ----------
 def send_email(jobs):
+    if not jobs:
+        print("No jobs found. Email will not be sent.")
+        return False
+
     sender = os.getenv("EMAIL_USER")
     password = os.getenv("EMAIL_PASS")
     recipient = os.getenv("RECIPIENT_EMAIL", sender)
@@ -113,6 +82,7 @@ def send_email(jobs):
     msg.attach(MIMEText(html, "html"))
 
     try:
+        import smtplib
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(sender, password)
@@ -132,6 +102,10 @@ if __name__ == "__main__":
     print("=" * 50)
 
     jobs = fetch_jobs()
+    if not jobs:
+        print("⚠️ No jobs found. Exiting without sending email.")
+        exit(0)
+
     success = send_email(jobs)
 
     if success:
