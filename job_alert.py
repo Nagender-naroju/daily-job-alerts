@@ -50,10 +50,6 @@ Nagender Naroju"""
 
 # ---------- Send Email ----------
 def send_email(jobs):
-    if not jobs:
-        print("No jobs found. Email will not be sent.")
-        return False
-
     sender = os.getenv("EMAIL_USER")
     password = os.getenv("EMAIL_PASS")
     recipient = os.getenv("RECIPIENT_EMAIL", sender)
@@ -64,16 +60,19 @@ def send_email(jobs):
 
     print(f"Sending email from: {sender} → {recipient}")
 
-    html = f"<h2>🔥 {len(jobs)} New Jobs Found</h2>"
-
-    for job in jobs:
-        html += f"""
-        <hr>
-        <h3>{job['title']} - {job['company']}</h3>
-        <p>{job['desc']}</p>
-        <a href="{job['link']}">Apply Here</a>
-        <pre>{linkedin_message(job)}</pre>
-        """
+    if not jobs:
+        # Email when no jobs found
+        html = f"<h2>⚠️ No Laravel or CodeIgniter jobs found today ({time.strftime('%d %b %Y')})</h2>"
+    else:
+        html = f"<h2>🔥 {len(jobs)} New Jobs Found ({time.strftime('%d %b %Y')})</h2>"
+        for job in jobs:
+            html += f"""
+            <hr>
+            <h3>{job['title']} - {job['company']}</h3>
+            <p>{job['desc']}</p>
+            <a href="{job['link']}">Apply Here</a>
+            <pre>{linkedin_message(job)}</pre>
+            """
 
     msg = MIMEMultipart()
     msg["Subject"] = f"Job Alerts - {time.strftime('%d %b %Y')}"
@@ -102,14 +101,6 @@ if __name__ == "__main__":
     print("=" * 50)
 
     jobs = fetch_jobs()
-    if not jobs:
-        print("⚠️ No jobs found. Exiting without sending email.")
-        exit(0)
+    send_email(jobs)
 
-    success = send_email(jobs)
-
-    if success:
-        print("✅ Completed Successfully")
-    else:
-        print("❌ Failed")
-        exit(1)
+    print("✅ Job alert completed")
