@@ -1,8 +1,8 @@
-name: Laravel & CodeIgniter Job Alert
+name: Free Job Alert
 
 on:
   schedule:
-    - cron: '30 6 * * *'   # 12:00 PM IST daily
+    - cron: '0 */4 * * *'   # every 4 hours
   workflow_dispatch:
 
 jobs:
@@ -10,25 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
           pip install requests beautifulsoup4
 
-      - name: Run job alert script
+      - name: Run script
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-        run: |
-          echo "Starting job search at $(date)"
-          python job_alert.py
-          echo "Completed at $(date)"
+        run: python job_alert.py
